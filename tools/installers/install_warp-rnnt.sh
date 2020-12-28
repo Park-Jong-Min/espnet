@@ -2,18 +2,16 @@
 
 set -euo pipefail
 
-cuda_version=$(python3 <<EOF
-import torch
-if torch.cuda.is_available():
-   version=torch.version.cuda.split(".")
-   print(version[0] + version[1])
-else:
-   print("")
-EOF
-)
+if [ $# != 1 ]; then
+    echo "Usage: $0 <cuda-version>"
+    echo "e.g.: $0 10.0"
+    exit 1;
+fi
 
-if ! [[ "$cuda_version" =~ ^(100|101|102)$ ]]; then
-    echo "warp-rnnt was not tested with CUDA_VERSION=$cuda_version. Skipping install."
+cuda_ver=$1
+
+if ! [[ "$cuda_ver" =~ ^(10.0|10.1|10.2)$ ]]; then
+    echo "warp-rnnt was not tested with CUDA_VERSION=$cuda_ver. Skipping install."
     exit 0
 fi
 

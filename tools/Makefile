@@ -3,8 +3,8 @@
 CHAINER_VERSION := 6.0.0
 # Disable cupy installation
 NO_CUPY :=
-# PyTorch version: 0.4.1, 1.0.0, 1.0.1, 1.1.0, 1.2.0, 1.3.0, 1.3.1, 1.4.0, 1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1
-TH_VERSION := 1.4.0
+# PyTorch version: 0.4.1, 1.0.0, 1.0.1, 1.1.0, 1.2.0, 1.3.0, 1.3.1, 1.4.0, 1.5.0, 1.5.1, 1.6.0
+TH_VERSION := 1.7.0
 WGET := wget --tries=3
 
 # Use pip for pytorch installation even if you have anaconda
@@ -63,7 +63,7 @@ endif
 
 
 kaldi:
-	test -f kaldi/egs/wsj/s5/utils/parse_options.sh || git clone --depth 1 https://github.com/kaldi-asr/kaldi
+	test -f kaldi/egs/wsj/s5/utils/parse_options.sh || { echo -e "Error: Put Kaldi here!\n    $$ ln -s <kaldi-root> kaldi"; exit 1; }
 
 activate_python.sh:
 	test -f activate_python.sh || { echo "Error: Run ./setup_python.sh or ./setup_anaconda.sh"; exit 1; }
@@ -71,6 +71,7 @@ activate_python.sh:
 ################ Logging ################
 showenv: activate_python.sh
 ifeq ($(strip $(CPU_ONLY)),)
+	[ -n "${CUDA_HOME}" ] || { echo -e "Error: CUDA_HOME is not set.\n    $$ . ./setup_cuda_env.sh <cuda-root>"; exit 1; }
 	@echo CUDA_VERSION=$(CUDA_VERSION)
 	. ./activate_python.sh && python3 check_pytorch_cuda_compatibility.py $(TH_VERSION) ${CUDA_VERSION} || { echo "Change TH_VERSION or CUDA_VERSION"; exit 1; }
 else
@@ -152,15 +153,11 @@ endif
 
 # NOTE(kamo): Add conda_packages.done if cmake is used
 warp-ctc.done: pytorch.done conda_packages.done
-ifeq ($(strip $(CPU_ONLY)),)
-	[ -n "${CUDA_HOME}" ] || { echo -e "Error: CUDA_HOME is not set.\n    $$ . ./setup_cuda_env.sh <cuda-root>"; exit 1; }
-endif
 	. ./activate_python.sh && ./installers/install_warp-ctc.sh
 	touch warp-ctc.done
 
 warp-transducer.done: pytorch.done conda_packages.done
 ifeq ($(strip $(CPU_ONLY)),)
-	[ -n "${CUDA_HOME}" ] || { echo -e "Error: CUDA_HOME is not set.\n    $$ . ./setup_cuda_env.sh <cuda-root>"; exit 1; }
 	. ./activate_python.sh && ./installers/install_warp-transducer.sh
 	. ./activate_python.sh &&  ./installers/install_warp-rnnt.sh $(CUDA_VERSION)
 	touch warp-transducer.done
@@ -170,9 +167,6 @@ else
 endif
 
 chainer_ctc.done: chainer.done
-ifeq ($(strip $(CPU_ONLY)),)
-	[ -n "${CUDA_HOME}" ] || { echo -e "Error: CUDA_HOME is not set.\n    $$ . ./setup_cuda_env.sh <cuda-root>"; exit 1; }
-endif
 	. ./activate_python.sh && ./installers/install_chainer_ctc.sh
 	touch chainer_ctc.done
 
