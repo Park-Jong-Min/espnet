@@ -4,15 +4,40 @@ import matplotlib.pyplot as plt
 from espnet_model_zoo.downloader import ModelDownloader
 from espnet2.bin.asr_inference import Speech2Text
 
-# encoder's attention extract function
-saved_images = []
+def save_image(image_list, name, n_layers, n_heads):
+    rows = n_layers
+    cols = n_heads
+    fig_saved_dir = './exp/feature_images/'
 
+    for j in range(rows):
+        fig = plt.figure(figsize=(100,100))
+        axes = []
+        for i in range(cols):
+            img = image_list[j*cols+i]
+            axes.append(fig.add_subplot(1, cols, i+1))
+            plt.imshow(img)
+            plt.axis('off')
+
+        print('process {0} layer images....'.format(j))
+        plt.savefig(fig_saved_dir + 'audio' + str(audio_num) + '_' + name +'_layer{0}_attention.png'.format(j),
+                    bbox_inches='tight',
+                    dpi=100)
+
+    # Use show when you want to show your attention image while extraction
+    # plt.show() 
+
+# encoder's attention extract function
+saved_encoder_self_attn_images = []
+saved_deocder_self_attn_images = []
 def attn_encoder(self, input_tensor, output_tensor):
     cols = output_tensor[1].shape[1]
 
     for i in range(cols):
         img = output_tensor[1][0,i,:]
-        saved_images.append(img)
+        saved_encoder_self_attn_images.append(img)
+
+def attn_decoder(self, input_tensor, output_tensor):
+    print("Not implemented")
 
 # Set test wav for attention image extraction
 TEST_DATA_PATH = "./data/dev_clean"
@@ -52,30 +77,9 @@ net = speech2text.asr_model
 for name, parameter in net.named_modules():
     for i in range(18): 
         if 'encoder.encoders.'+ str(i) +'.self_attn' == name:
-            print(name)
-            print(parameter)
             parameter.register_forward_hook(attn_encoder)
 
 # Do forward path calculation for extract image
 out = speech2text(speech)
 
-fig_saved_dir = './exp/feature_images/'
-rows = 18
-cols = 8
-
-for j in range(rows):
-    fig = plt.figure(figsize=(100,100))
-    axes = []
-    for i in range(cols):
-        img = saved_images[j*cols+i]
-        axes.append(fig.add_subplot(1, cols, i+1))
-        plt.imshow(img)
-        plt.axis('off')
-
-    print('process {0} layer images....'.format(j))
-    plt.savefig(fig_saved_dir + 'audio' + str(audio_num) +'_encoder_layer{0}_attention.png'.format(j),
-                bbox_inches='tight',
-                dpi=100)
-                
-    # Use show when you want to show your attention image while extraction
-    # plt.show() 
+save_image(saved_encoder_self_attn_images, 'encoder_self_attn', 18, 8)

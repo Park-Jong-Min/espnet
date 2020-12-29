@@ -3,4 +3,4 @@
 if [ -z "${PS1:-}" ]; then
     PS1=__dummy__
 fi
-. /home/jmpark/espnet/tools/anaconda/etc/profile.d/conda.sh && conda deactivate && conda activate espnet_1.7
+. /home_data/jmpark/espnet/tools/anaconda/etc/profile.d/conda.sh && conda deactivate && conda activate espnet_1.7.1

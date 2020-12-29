@@ -67,7 +67,6 @@ class Speech2Text:
         nbest: int = 1,
     ):
         assert check_argument_types()
-
         # 1. Build ASR model
         scorers = {}
         asr_model, asr_train_args = ASRTask.build_model_from_file(
@@ -446,7 +445,6 @@ def main(cmd=None):
     kwargs = vars(args)
     kwargs.pop("config", None)
     inference(**kwargs)
-
 
 if __name__ == "__main__":
     main()
