@@ -34,7 +34,7 @@ from espnet2.utils.types import str2bool
 from espnet2.utils.types import str2triple_str
 from espnet2.utils.types import str_or_none
 
-
+from espnet2.bin.jm_utils import *
 class Speech2Text:
     """Speech2Text class
 
