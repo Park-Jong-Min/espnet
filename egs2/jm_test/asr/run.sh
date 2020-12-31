@@ -7,8 +7,8 @@ set -o pipefail
 
 train_set="/home_data/jmpark/espnet/jm_test/asr/data/train_960"
 valid_set="dev"
-# test_sets="test_clean test_other dev_clean dev_other"
-test_sets='dev_clean'
+test_sets="test_clean test_other dev_clean dev_other"
+# test_sets='dev_other'
 
 inference_config=yaml/decode_asr.yaml
 
@@ -22,8 +22,8 @@ inference_config=yaml/decode_asr.yaml
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
-    --inference_tag "beam1_test" \
-    --skip_data_prep true \
+    --inference_tag "beam1_noLM_deleteHEAD_other_0" \
+    --skip_data_prep false \
     --skip_train true \
     --inference_asr_model "54epoch.pth" \
     --inference_lm "17epoch.pth" \

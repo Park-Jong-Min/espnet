@@ -12,6 +12,7 @@ import numpy
 import torch
 from torch import nn
 
+from espnet2.bin.jm_utils import *
 
 class MultiHeadedAttention(nn.Module):
     """Multi-Head Attention layer.
@@ -61,7 +62,7 @@ class MultiHeadedAttention(nn.Module):
 
         return q, k, v
 
-    def forward_attention(self, value, scores, mask):
+    def forward_attention(self, value, scores, mask, survive_head_idx):
         """Compute attention context vector.
 
         Args:
@@ -87,6 +88,11 @@ class MultiHeadedAttention(nn.Module):
         else:
             self.attn = torch.softmax(scores, dim=-1)  # (batch, head, time1, time2)
 
+        if survive_head_idx[0] != -1:
+            del_attn = torch.zeros_like(self.attn)
+            del_attn[:,survive_head_idx[0],:].copy_(self.attn[:,survive_head_idx[0],:])
+            self.attn = del_attn
+
         p_attn = self.dropout(self.attn)
         x = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
         x = (
@@ -95,7 +101,7 @@ class MultiHeadedAttention(nn.Module):
 
         return self.linear_out(x), self.attn  # (batch, time1, d_model)
 
-    def forward(self, query, key, value, mask):
+    def forward(self, query, key, value, mask, survive_head_idx):
         """Compute scaled dot product attention.
 
         Args:
@@ -111,7 +117,7 @@ class MultiHeadedAttention(nn.Module):
         """
         q, k, v = self.forward_qkv(query, key, value)
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
-        return self.forward_attention(v, scores, mask)
+        return self.forward_attention(v, scores, mask, survive_head_idx)
 
 
 class RelPositionMultiHeadedAttention(MultiHeadedAttention):

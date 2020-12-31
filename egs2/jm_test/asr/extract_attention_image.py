@@ -90,7 +90,7 @@ if __name__ == "__main__":
     WAV_LIST_PATH = TEST_DATA_PATH + "/wav.scp"
 
     file_name_list = []
-    audio_num = 10 # selelct one of the wav in file_name_list
+    audio_num = 2 # selelct one of the wav in file_name_list
 
     with open(WAV_LIST_PATH, "r") as f:
         lines = f.readlines()
@@ -112,8 +112,8 @@ if __name__ == "__main__":
         maxlenratio=0.0,
         minlenratio=0.0,
         beam_size=1,
-        ctc_weight=0.4,
-        lm_weight=0.6,
+        ctc_weight=1.0,
+        lm_weight=0.0,
         penalty=0.0,
         nbest=1
     )
@@ -138,6 +138,6 @@ if __name__ == "__main__":
     # Do forward path calculation for extract image
     out = speech2text(speech)
 
-    # save_encoder_image(saved_encoder_self_attn_images, audio_num, 'encoder_self_attn', 18, 8, './exp/feature_images/encoder_self_attn/')
+    save_encoder_image(saved_encoder_self_attn_images, audio_num, 'encoder_self_attn', 18, 8, './exp/feature_images/encoder_self_attn/')
     # save_decoder_image(saved_decoder_self_attn_images, audio_num, 'decoder_self_attn', 6, 8, './exp/feature_images/decoder_self_attn/', 'self')
-    save_decoder_image(saved_decoder_src_attn_images, audio_num, 'decoder_src_attn', 6, 8, './exp/feature_images/decoder_src_attn/', 'src')
+    # save_decoder_image(saved_decoder_src_attn_images, audio_num, 'decoder_src_attn', 6, 8, './exp/feature_images/decoder_src_attn/', 'src')

@@ -74,6 +74,9 @@ class Speech2Text:
         )
         asr_model.to(dtype=getattr(torch, dtype)).eval()
 
+        apply_hook(model=asr_model, layer_idx=0, head_idx=0, 
+                logging=logging, module_type='encoder', attn_type='self_attn')
+
         decoder = asr_model.decoder
         ctc = CTCPrefixScorer(ctc=asr_model.ctc, eos=asr_model.eos)
         token_list = asr_model.token_list

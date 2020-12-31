@@ -99,13 +99,13 @@ class DecoderLayer(nn.Module):
                 tgt_q_mask = tgt_mask[:, -1:, :]
 
         if self.concat_after:
-            self_attn_out, self_attn_data = self.self_attn(tgt_q, tgt, tgt, tgt_q_mask)
+            self_attn_out, self_attn_data = self.self_attn(tgt_q, tgt, tgt, tgt_q_mask, [-1])
             tgt_concat = torch.cat(
                 (tgt_q, self_attn_out), dim=-1
             )
             x = residual + self.concat_linear1(tgt_concat)
         else:
-            self_attn_out, self_attn_data = self.self_attn(tgt_q, tgt, tgt, tgt_q_mask)
+            self_attn_out, self_attn_data = self.self_attn(tgt_q, tgt, tgt, tgt_q_mask, [-1])
             x = residual + self.dropout(self_attn_out)
         if not self.normalize_before:
             x = self.norm1(x)
