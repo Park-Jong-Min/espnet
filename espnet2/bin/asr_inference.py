@@ -34,7 +34,7 @@ from espnet2.utils.types import str2bool
 from espnet2.utils.types import str2triple_str
 from espnet2.utils.types import str_or_none
 
-
+from espnet2.bin.jm_utils import *
 class Speech2Text:
     """Speech2Text class
 
@@ -74,6 +74,9 @@ class Speech2Text:
             asr_train_config, asr_model_file, device
         )
         asr_model.to(dtype=getattr(torch, dtype)).eval()
+
+        apply_hook(model=asr_model, layer_idx=0, head_idx=0, 
+                logging=logging, module_type='encoder', attn_type='self_attn')
 
         decoder = asr_model.decoder
         ctc = CTCPrefixScorer(ctc=asr_model.ctc, eos=asr_model.eos)

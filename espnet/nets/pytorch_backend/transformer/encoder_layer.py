@@ -81,10 +81,12 @@ class EncoderLayer(nn.Module):
             mask = None if mask is None else mask[:, -1:, :]
 
         if self.concat_after:
-            x_concat = torch.cat((x, self.self_attn(x_q, x, x, mask)), dim=-1)
+            self_attn_out, _ = self.self_attn(x_q, x, x, mask)
+            x_concat = torch.cat((x, self_attn_out), dim=-1)
             x = residual + self.concat_linear(x_concat)
         else:
-            x = residual + self.dropout(self.self_attn(x_q, x, x, mask))
+            self_attn_out, _ = self.self_attn(x_q, x, x, mask)
+            x = residual + self.dropout(self_attn_out)
         if not self.normalize_before:
             x = self.norm1(x)
 

@@ -29,4 +29,8 @@ inference_config=conf/decode_asr.yaml
     --skip_data_prep true \
     --skip_train true \
     --inference_asr_model "ref_asr.pth" \
-    --inference_lm "ref_lm.pth"
+    --inference_lm "ref_lm.pth" \
+    --inference_tag "noLM_DH_0_0" \
+    --use_lm false \
+    # --layer_idx 0 \
+    # --head_idx 0
