@@ -21,6 +21,9 @@ min() {
   echo "${a}"
 }
 SECONDS=0
+# Delete Head related
+layer_idx=
+head_idx=
 
 # General configuration
 stage=1              # Processes starts from the specified stage.
@@ -1157,6 +1160,8 @@ if ! "${skip_eval}"; then
                     --asr_train_config "${asr_exp}"/config.yaml \
                     --asr_model_file "${asr_exp}"/"${inference_asr_model}" \
                     --output_dir "${_logdir}"/output.JOB \
+                    --layer_idx "${layer_idx}" \
+                    --head_idx "${head_idx}" \
                     ${_opts} ${inference_args}
 
             # 3. Concatenates the output files from each jobs

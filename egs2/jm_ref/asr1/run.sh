@@ -30,7 +30,7 @@ inference_config=conf/decode_asr.yaml
     --skip_train true \
     --inference_asr_model "ref_asr.pth" \
     --inference_lm "ref_lm.pth" \
-    --inference_tag "noLM_DH_0_0" \
+    --inference_tag "noLM_DH_$1_$2" \
     --use_lm false \
-    # --layer_idx 0 \
-    # --head_idx 0
+    --layer_idx "$1" \
+    --head_idx "$2" \

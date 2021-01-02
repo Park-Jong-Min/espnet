@@ -65,6 +65,8 @@ class Speech2Text:
         lm_weight: float = 1.0,
         penalty: float = 0.0,
         nbest: int = 1,
+        layer_idx: int=-1,
+        head_idx: int=-1,
     ):
         assert check_argument_types()
 
@@ -75,7 +77,7 @@ class Speech2Text:
         )
         asr_model.to(dtype=getattr(torch, dtype)).eval()
 
-        apply_hook(model=asr_model, layer_idx=0, head_idx=0, 
+        apply_hook(model=asr_model, layer_idx=layer_idx, head_idx=head_idx, 
                 logging=logging, module_type='encoder', attn_type='self_attn')
 
         decoder = asr_model.decoder
@@ -236,6 +238,8 @@ def inference(
     penalty: float,
     nbest: int,
     num_workers: int,
+    layer_idx: int,
+    head_idx: int,
     log_level: Union[int, str],
     data_path_and_name_and_type: Sequence[Tuple[str, str, str]],
     key_file: Optional[str],
@@ -287,6 +291,8 @@ def inference(
         lm_weight=lm_weight,
         penalty=penalty,
         nbest=nbest,
+        layer_idx=layer_idx,
+        head_idx=head_idx,
     )
 
     # 3. Build data-iterator
@@ -438,6 +444,18 @@ def get_parser():
         default=None,
         help="The model path of sentencepiece. "
         "If not given, refers from the training args",
+    )
+
+    group = parser.add_argument_group("Delete Head related")
+    group.add_argument(
+        "--layer_idx",
+        type=int,
+        default=-1,
+    )
+    group.add_argument(
+        "--head_idx",
+        type=int,
+        default=-1,
     )
 
     return parser

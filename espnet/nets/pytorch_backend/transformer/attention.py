@@ -60,7 +60,7 @@ class MultiHeadedAttention(nn.Module):
         k = k.transpose(1, 2)  # (batch, head, time2, d_k)
         v = v.transpose(1, 2)  # (batch, head, time2, d_k)
 
-        if self.survive_head_idx is not None:
+        if self.survive_head_idx != -1:
             q_dh = torch.zeros_like(q)
             k_dh = torch.zeros_like(k)
             v_dh = torch.zeros_like(v)
