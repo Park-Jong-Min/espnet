@@ -170,6 +170,7 @@ class BeamSearch(torch.nn.Module):
         states = dict()
         for k, d in self.full_scorers.items():
             scores[k], states[k] = d.score(hyp.yseq, hyp.states[k], x)
+        
         return scores, states
 
     def score_partial(
@@ -297,6 +298,7 @@ class BeamSearch(torch.nn.Module):
             # scoring
             weighted_scores = torch.zeros(self.n_vocab, dtype=x.dtype, device=x.device)
             scores, states = self.score_full(hyp, x)
+
             for k in self.full_scorers:
                 weighted_scores += self.weights[k] * scores[k]
             # partial scoring
@@ -331,6 +333,7 @@ class BeamSearch(torch.nn.Module):
             best_hyps = sorted(best_hyps, key=lambda x: x.score, reverse=True)[
                 : min(len(best_hyps), self.beam_size)
             ]
+            
         return best_hyps
 
     def forward(
@@ -364,6 +367,7 @@ class BeamSearch(torch.nn.Module):
         ended_hyps = []
         for i in range(maxlen):
             logging.debug("position " + str(i))
+            # logging.debug(f"running_hyps is {running_hyps}")
             best = self.search(running_hyps, x)
             # post process of one iteration
             running_hyps = self.post_process(i, maxlen, maxlenratio, best, ended_hyps)

@@ -67,6 +67,7 @@ class Speech2Text:
         nbest: int = 1,
         layer_idx: int=-1,
         head_idx: int=-1,
+        out_mode: str = "default", 
     ):
         assert check_argument_types()
 
@@ -163,8 +164,9 @@ class Speech2Text:
         self.device = device
         self.dtype = dtype
         self.nbest = nbest
+        self.out_mode = out_mode
 
-    @torch.no_grad()
+    # @torch.no_grad()
     def __call__(
         self, speech: Union[torch.Tensor, np.ndarray]
     ) -> List[Tuple[Optional[str], List[str], List[int], Hypothesis]]:
@@ -180,10 +182,10 @@ class Speech2Text:
 
         # Input as audio signal
         if isinstance(speech, np.ndarray):
-            speech = torch.tensor(speech)
+            speech = torch.tensor(speech).requires_grad_(True)
 
         # data: (Nsamples,) -> (1, Nsamples)
-        speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
+        speech = speech.unsqueeze(0).to(getattr(torch, self.dtype)).requires_grad_(True)
         # lenghts: (1,)
         lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
         batch = {"speech": speech, "speech_lengths": lengths}
@@ -191,11 +193,15 @@ class Speech2Text:
         # a. To device
         batch = to_device(batch, device=self.device)
 
+        print(speech.requires_grad)
+
         # b. Forward Encoder
         enc, _ = self.asr_model.encode(**batch)
+
         assert len(enc) == 1, len(enc)
 
         # c. Passed the encoder result and the beam search
+        logging.debug(f"beam search input is {enc[0]} and shape {enc[0].shape}")
         nbest_hyps = self.beam_search(
             x=enc[0], maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
         )
@@ -221,7 +227,11 @@ class Speech2Text:
             results.append((text, token, token_int, hyp))
 
         assert check_return_type(results)
-        return results
+
+        if self.out_mode == 'default':
+            return results
+        else:
+            return results, self.asr_model.ctc.ctc_lo(enc)
 
 
 def inference(
@@ -352,7 +362,7 @@ def get_parser():
     parser.add_argument(
         "--log_level",
         type=lambda x: x.upper(),
-        default="INFO",
+        default="DEBUG",
         choices=("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"),
         help="The verbose level of logging",
     )

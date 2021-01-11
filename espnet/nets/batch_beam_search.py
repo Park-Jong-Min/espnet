@@ -224,6 +224,7 @@ class BatchBeamSearch(BeamSearch):
         scores, states = self.score_full(running_hyps, x.expand(n_batch, *x.shape))
         for k in self.full_scorers:
             weighted_scores += self.weights[k] * scores[k]
+
         # partial scoring
         if self.do_pre_beam:
             pre_beam_scores = (
@@ -238,6 +239,7 @@ class BatchBeamSearch(BeamSearch):
         part_scores, part_states = self.score_partial(running_hyps, part_ids, x)
         for k in self.part_scorers:
             weighted_scores += self.weights[k] * part_scores[k]
+        
         # add previous hyp scores
         weighted_scores += running_hyps.score.to(
             dtype=x.dtype, device=x.device
@@ -281,6 +283,7 @@ class BatchBeamSearch(BeamSearch):
                     ),
                 )
             )
+
         return self.batchfy(best_hyps)
 
     def post_process(
