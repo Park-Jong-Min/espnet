@@ -31,6 +31,11 @@ def save_encoder_grad_image(image_list, target_list, audio_num, n_targets, PATH)
 
 def make_grad_cam_img_list(model, target_out, target_loss):
     model.zero_grad()
+
+    for layer_idx in range(18):
+        hook = globals()[f'hook_{layer_idx}']
+        hook.target_output.grad = None
+
     target_out.backward(gradient=target_loss, retain_graph=True)
 
     out_image = torch.zeros((18, 8))
@@ -115,7 +120,7 @@ if __name__ == "__main__":
     # Add register hook for in encoder layers.
     net = speech2text.asr_model
     
-    audio_num = 10 # selelct one of the wav in file_name_list
+    audio_num = 14 # selelct one of the wav in file_name_list
     speech, rate = soundfile.read(file_name_list[audio_num])
 
     for i in range(18):
@@ -124,7 +129,7 @@ if __name__ == "__main__":
     out, ctc_out = speech2text(speech)
     ctc_argmax = ctc_out.argmax(2)
     n_targets = 0
-    mode = 'sentence'
+    mode = 'word'
 
     createFolder(exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}')
 
