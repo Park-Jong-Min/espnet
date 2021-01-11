@@ -1,8 +1,17 @@
 import soundfile
 import torch
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
+import os
 from espnet_model_zoo.downloader import ModelDownloader
 from espnet2.bin.asr_inference import Speech2Text
+
+def createFolder(directory):
+    try:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+    except OSError:
+        print ('Error: Creating directory. ' +  directory)
 
 def save_encoder_grad_image(image_list, target_list, audio_num, n_targets, PATH):
     fig_saved_dir = PATH
@@ -15,7 +24,7 @@ def save_encoder_grad_image(image_list, target_list, audio_num, n_targets, PATH)
 
         print(f'process {target_list[tar]} target images....')
 
-        plt.savefig(fig_saved_dir + f'head_score_audio_{audio_num}.png',
+        plt.savefig(fig_saved_dir + f'head_score_audio_{audio_num}_target_{target_list[tar]}.png',
                     bbox_inches='tight',
                     dpi=100)
         plt.close()
@@ -29,11 +38,11 @@ def make_grad_cam_img_list(model, target_out, target_loss):
     for layer_idx in range(18):
         hook = globals()[f'hook_{layer_idx}']
 
-        grad_out_head_view = hook.target_output_grad.view(1, -1, 8, 64)
+        grad_out_head_view = hook.target_output.grad.view(1, -1, 8, 64)
         gap_grad = torch.mean(grad_out_head_view, dim=3).unsqueeze(3)
 
         feature = hook.target_output.view(1, -1, 8, 64)
-        grad_cam = torch.abs(torch.mul(feature, gap_grad)).mean(dim=1).mean(dim=2)
+        grad_cam = F.relu(torch.mul(feature, gap_grad)).mean(dim=1).mean(dim=2)
 
         out_image[layer_idx] = grad_cam.detach().clone()
     
@@ -45,15 +54,10 @@ if __name__ == "__main__":
     class Hook():
         def __init__(self, module):
             self.hook_f = module.register_forward_hook(self.hook_f_fn)
-            self.hook_b = module.register_backward_hook(self.hook_b_fn)
             self.target_output = None
-            self.target_output_grad = None
 
         def hook_f_fn(self, module, input, output):
-            self.target_output = output.clone()
-
-        def hook_b_fn(self, module, grad_input, grad_output):
-            self.target_output_grad = grad_output[0].clone()
+            self.target_output = input[0]
 
         def close(self):
             self.hook.remove()
@@ -111,7 +115,7 @@ if __name__ == "__main__":
     # Add register hook for in encoder layers.
     net = speech2text.asr_model
     
-    audio_num = 14 # selelct one of the wav in file_name_list
+    audio_num = 10 # selelct one of the wav in file_name_list
     speech, rate = soundfile.read(file_name_list[audio_num])
 
     for i in range(18):
@@ -119,25 +123,34 @@ if __name__ == "__main__":
     
     out, ctc_out = speech2text(speech)
     ctc_argmax = ctc_out.argmax(2)
-    n_targets = 1
+    n_targets = 0
+    mode = 'sentence'
 
-    one_hot = torch.zeros_like(ctc_out)
-    one_hot.scatter_(2, ctc_argmax.unsqueeze(2), 1.0)
-    img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
-    img_list.append(img)
-    word_num_list.append(audio_num)
+    createFolder(exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}')
 
-    # for i in range(ctc_out.size(1)):
-    #     if ctc_argmax[0, i] == 0:
-    #         continue
+    if mode == "sentence":
+        one_hot = torch.zeros_like(ctc_out)
+        one_hot.scatter_(2, ctc_argmax.unsqueeze(2), 1.0)
+        img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
+        img_list.append(img)
+        word_num_list.append(audio_num)
         
-    #     else:
-    #         n_targets += 1
-    #         one_hot = torch.zeros_like(ctc_out)
-    #         one_hot.scatter_(2, ctc_argmax.unsqueeze(2), 1.0)
-    #         img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
-    #         img_list.append(img)
-    #         word_num_list.append(ctc_argmax[0,i])
-    
-    save_encoder_grad_image(image_list=img_list, target_list=word_num_list, audio_num=audio_num,
-                            n_targets=n_targets, PATH=exp_dir + '/feature_images/encoder_grad_cam/')
+        save_encoder_grad_image(image_list=img_list, target_list=word_num_list, audio_num=audio_num,
+                                n_targets=n_targets + 1, PATH=exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}/')
+
+
+    elif mode == "word":
+        for tar in range(ctc_out.size(1)):
+            # if ctc_argmax[0, tar] == 0:
+            #     continue
+            
+            # else:
+            n_targets += 1
+            one_hot = torch.zeros_like(ctc_out)
+            one_hot[0, tar, ctc_argmax[0,tar].item()] = 1
+            img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
+            img_list.append(img)
+            word_num_list.append(f'{tar}_{ctc_argmax[0,tar]}')
+                
+        save_encoder_grad_image(image_list=img_list, target_list=word_num_list, audio_num=audio_num,
+                                n_targets=n_targets, PATH=exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}/')

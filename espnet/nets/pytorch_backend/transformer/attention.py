@@ -104,6 +104,7 @@ class MultiHeadedAttention(nn.Module):
         x = (
             x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)
         )  # (batch, time1, d_model)
+        x.retain_grad()
 
         return self.linear_out(x), self.attn # (batch, time1, d_model)
 

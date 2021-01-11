@@ -193,8 +193,6 @@ class Speech2Text:
         # a. To device
         batch = to_device(batch, device=self.device)
 
-        print(speech.requires_grad)
-
         # b. Forward Encoder
         enc, _ = self.asr_model.encode(**batch)
 
