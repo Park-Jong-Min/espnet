@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # Add register hook for in encoder layers.
     net = speech2text.asr_model
     
-    audio_num = 14 # selelct one of the wav in file_name_list
+    audio_num = 200 # selelct one of the wav in file_name_list
     speech, rate = soundfile.read(file_name_list[audio_num])
 
     for i in range(18):
@@ -129,7 +129,8 @@ if __name__ == "__main__":
     out, ctc_out = speech2text(speech)
     ctc_argmax = ctc_out.argmax(2)
     n_targets = 0
-    mode = 'word'
+    mode = 'sentence'
+    space = False
 
     createFolder(exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}')
 
@@ -146,16 +147,24 @@ if __name__ == "__main__":
 
     elif mode == "word":
         for tar in range(ctc_out.size(1)):
-            # if ctc_argmax[0, tar] == 0:
-            #     continue
+            if ctc_argmax[0, tar] == 0:
+                if space == False:
+                    continue
+                else:
+                    n_targets += 1
+                    one_hot = torch.zeros_like(ctc_out)
+                    one_hot[0, tar, ctc_argmax[0,tar].item()] = 1
+                    img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
+                    img_list.append(img)
+                    word_num_list.append(f'{tar}_{ctc_argmax[0,tar]}')
             
-            # else:
-            n_targets += 1
-            one_hot = torch.zeros_like(ctc_out)
-            one_hot[0, tar, ctc_argmax[0,tar].item()] = 1
-            img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
-            img_list.append(img)
-            word_num_list.append(f'{tar}_{ctc_argmax[0,tar]}')
+            else:
+                n_targets += 1
+                one_hot = torch.zeros_like(ctc_out)
+                one_hot[0, tar, ctc_argmax[0,tar].item()] = 1
+                img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
+                img_list.append(img)
+                word_num_list.append(f'{tar}_{ctc_argmax[0,tar]}')
                 
         save_encoder_grad_image(image_list=img_list, target_list=word_num_list, audio_num=audio_num,
                                 n_targets=n_targets, PATH=exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}/')
