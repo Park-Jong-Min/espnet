@@ -78,8 +78,12 @@ class Speech2Text:
         )
         asr_model.to(dtype=getattr(torch, dtype)).eval()
 
-        apply_hook(model=asr_model, layer_idx=layer_idx, head_idx=head_idx, 
-                logging=logging, module_type='encoder', attn_type='self_attn')
+        # apply_hook(model=asr_model, layer_idx=layer_idx, head_idx=head_idx, 
+        #         logging=logging, module_type='encoder', attn_type='self_attn')
+
+        # NP_PATH = '/home_data/jmpark/espnet/egs2/jm_ref/asr1/exp/feature_images/encoder_grad_cam/sentence/mean/head_score_dev_clean.npy'
+        # apply_prunehook(model=asr_model, NP_PATH=NP_PATH, prune_ratio=0.9,
+        #             module_type='encoder', attn_type='self_attn', logging=logging)
 
         decoder = asr_model.decoder
         ctc = CTCPrefixScorer(ctc=asr_model.ctc, eos=asr_model.eos)
@@ -360,7 +364,7 @@ def get_parser():
     parser.add_argument(
         "--log_level",
         type=lambda x: x.upper(),
-        default="DEBUG",
+        default="INFO",
         choices=("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"),
         help="The verbose level of logging",
     )

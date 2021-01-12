@@ -29,11 +29,11 @@ def save_encoder_grad_image(image_list, target_list, audio_num, n_targets, PATH)
                     dpi=100)
         plt.close()
 
-def make_grad_cam_img_list(model, target_out, target_loss):
+def make_grad_cam_img_list(model, target_out, target_loss, hook_list):
     model.zero_grad()
 
     for layer_idx in range(18):
-        hook = globals()[f'hook_{layer_idx}']
+        hook = hook_list[layer_idx]
         hook.target_output.grad = None
 
     target_out.backward(gradient=target_loss, retain_graph=True)
@@ -41,7 +41,7 @@ def make_grad_cam_img_list(model, target_out, target_loss):
     out_image = torch.zeros((18, 8))
 
     for layer_idx in range(18):
-        hook = globals()[f'hook_{layer_idx}']
+        hook = hook_list[layer_idx]
 
         grad_out_head_view = hook.target_output.grad.view(1, -1, 8, 64)
         gap_grad = torch.mean(grad_out_head_view, dim=3).unsqueeze(3)
@@ -53,8 +53,9 @@ def make_grad_cam_img_list(model, target_out, target_loss):
     
     return out_image.detach().numpy()
 
-
 if __name__ == "__main__":
+
+    # When error occur check attention.py's x.retain_grad()
 
     class Hook():
         def __init__(self, module):
@@ -116,20 +117,21 @@ if __name__ == "__main__":
 
     word_num_list = []
     img_list = []
+    hook_list = []
 
     # Add register hook for in encoder layers.
     net = speech2text.asr_model
     
-    audio_num = 200 # selelct one of the wav in file_name_list
+    audio_num = 1 # selelct one of the wav in file_name_list
     speech, rate = soundfile.read(file_name_list[audio_num])
 
     for i in range(18):
-        globals()[f'hook_{i}'] = apply_hook(net, i, 'encoder', 'self_attn')
+        hook_list.append(apply_hook(net, i, 'encoder', 'self_attn'))
     
     out, ctc_out = speech2text(speech)
     ctc_argmax = ctc_out.argmax(2)
     n_targets = 0
-    mode = 'sentence'
+    mode = 'word'
     space = False
 
     createFolder(exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}')
@@ -154,7 +156,7 @@ if __name__ == "__main__":
                     n_targets += 1
                     one_hot = torch.zeros_like(ctc_out)
                     one_hot[0, tar, ctc_argmax[0,tar].item()] = 1
-                    img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
+                    img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot, hook_list=hook_list)
                     img_list.append(img)
                     word_num_list.append(f'{tar}_{ctc_argmax[0,tar]}')
             
@@ -162,7 +164,7 @@ if __name__ == "__main__":
                 n_targets += 1
                 one_hot = torch.zeros_like(ctc_out)
                 one_hot[0, tar, ctc_argmax[0,tar].item()] = 1
-                img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
+                img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot, hook_list=hook_list)
                 img_list.append(img)
                 word_num_list.append(f'{tar}_{ctc_argmax[0,tar]}')
                 

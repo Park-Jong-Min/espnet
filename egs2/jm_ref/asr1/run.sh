@@ -33,5 +33,5 @@ inference_config=conf/decode_asr.yaml
     --use_lm false \
     --layer_idx "$1" \
     --head_idx "$2" \
-    --inference_tag "debug" 
+    --inference_tag "prune_90_lower" 
     # --inference_tag "noLM_DH_$1_$2" \

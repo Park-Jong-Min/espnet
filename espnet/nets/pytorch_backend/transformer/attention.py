@@ -36,7 +36,7 @@ class MultiHeadedAttention(nn.Module):
         self.linear_out = nn.Linear(n_feat, n_feat)
         self.attn = None
         self.dropout = nn.Dropout(p=dropout_rate)
-        self.survive_head_idx = None
+        self.delete_head_list = None
 
     def forward_qkv(self, query, key, value):
         """Transform query, key and value.
@@ -60,16 +60,20 @@ class MultiHeadedAttention(nn.Module):
         k = k.transpose(1, 2)  # (batch, head, time2, d_k)
         v = v.transpose(1, 2)  # (batch, head, time2, d_k)
 
-        if self.survive_head_idx != -1:
-            q_dh = torch.zeros_like(q)
-            k_dh = torch.zeros_like(k)
-            v_dh = torch.zeros_like(v)
+        if self.delete_head_list is not None:
+            q.index_fill_(1, self.delete_head_list, 0)
+            k.index_fill_(1, self.delete_head_list, 0)
+            v.index_fill_(1, self.delete_head_list, 0)
 
-            q_dh[:, self.survive_head_idx, :] = q[:, self.survive_head_idx, :]
-            k_dh[:, self.survive_head_idx, :] = k[:, self.survive_head_idx, :]
-            v_dh[:, self.survive_head_idx, :] = v[:, self.survive_head_idx, :]
+            # q_dh = torch.zeros_like(q)
+            # k_dh = torch.zeros_like(k)
+            # v_dh = torch.zeros_like(v)
 
-            return q_dh, k_dh, v_dh
+            # q_dh[:, self.survive_head_idx, :] = q[:, self.survive_head_idx, :]
+            # k_dh[:, self.survive_head_idx, :] = k[:, self.survive_head_idx, :]
+            # v_dh[:, self.survive_head_idx, :] = v[:, self.survive_head_idx, :]
+
+            # return q_dh, k_dh, v_dh
 
         return q, k, v
 
@@ -104,11 +108,13 @@ class MultiHeadedAttention(nn.Module):
         x = (
             x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)
         )  # (batch, time1, d_model)
-        x.retain_grad()
+
+        # Add when you want to make head score image
+        # x.retain_grad()
 
         return self.linear_out(x), self.attn # (batch, time1, d_model)
 
-    def forward(self, query, key, value, mask, survive_head_idx=None):
+    def forward(self, query, key, value, mask, delete_head_list=None):
         """Compute scaled dot product attention.
 
         Args:
@@ -122,7 +128,7 @@ class MultiHeadedAttention(nn.Module):
             torch.Tensor: Output tensor (#batch, time1, d_model).
 
         """
-        self.survive_head_idx = survive_head_idx
+        self.delete_head_list = delete_head_list
         q, k, v = self.forward_qkv(query, key, value)
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
         return self.forward_attention(v, scores, mask)
