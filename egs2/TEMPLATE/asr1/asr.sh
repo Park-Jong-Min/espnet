@@ -21,9 +21,6 @@ min() {
   echo "${a}"
 }
 SECONDS=0
-# Delete Head related
-layer_idx=
-head_idx=
 
 # General configuration
 stage=1              # Processes starts from the specified stage.
@@ -32,10 +29,10 @@ skip_data_prep=false # Skip data preparation stages.
 skip_train=false     # Skip training stages.
 skip_eval=false      # Skip decoding and evaluation stages.
 skip_upload=true     # Skip packing and uploading stages.
-ngpu=1               # The number of gpus ("0" uses cpu, otherwise use gpu).
+ngpu=4               # The number of gpus ("0" uses cpu, otherwise use gpu).
 num_nodes=1          # The number of nodes.
 nj=32                # The number of parallel jobs.
-inference_nj=32      # The number of parallel jobs in decoding.
+inference_nj=32       # The number of parallel jobs in decoding.
 gpu_inference=false  # Whether to perform gpu decoding.
 dumpdir=dump         # Directory to dump features.
 expdir=exp           # Directory to save experiments.
@@ -1160,8 +1157,6 @@ if ! "${skip_eval}"; then
                     --asr_train_config "${asr_exp}"/config.yaml \
                     --asr_model_file "${asr_exp}"/"${inference_asr_model}" \
                     --output_dir "${_logdir}"/output.JOB \
-                    --layer_idx "${layer_idx}" \
-                    --head_idx "${head_idx}" \
                     ${_opts} ${inference_args}
 
             # 3. Concatenates the output files from each jobs

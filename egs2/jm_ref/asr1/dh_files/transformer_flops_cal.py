@@ -54,9 +54,10 @@ def self_attn_flops_cal(input_shape, d_model, d_k_q=64, d_v=64, n_heads=8):
     FLOPs_ffnn += matrix_mul_flops([seqlen, 2048], [2048, d_model])
 
     # Total FLOPs
+    FLOPs_head = FLOPs_linear_q + FLOPs_linear_k + FLOPs_linear_v + FLOPs_score + FLOPs_concatenate_out
     FLOPs_total = FLOPs_linear_q + FLOPs_linear_k + FLOPs_linear_v + FLOPs_score + FLOPs_concatenate_out + FLOPs_add + FLOPs_norm + FLOPs_ffnn
 
-    return FLOPs_total
+    return FLOPs_total, FLOPs_head
 
 
 if __name__ == "__main__":
@@ -65,8 +66,9 @@ if __name__ == "__main__":
     # 4.815sec speech
     input_shape = [99, 512]
 
-    one_layer_FLOPs = self_attn_flops_cal(input_shape, 512, 8)
+    one_layer_FLOPs, one_layer_head_FLOPs = self_attn_flops_cal(input_shape, 512, 8)
 
     print(f"{one_layer_FLOPs/1e9} GFLOPs")
+    print(f"{one_layer_head_FLOPs/1e9} GFLOPs")
 
 

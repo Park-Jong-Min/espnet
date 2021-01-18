@@ -5,12 +5,11 @@ set -e
 set -u
 set -o pipefail
 
-train_set="train_960"
+train_set="train_960_sp"
 valid_set="dev"
-# test_sets="test_clean test_other dev_clean dev_other"
-test_sets="dev_clean"
+test_sets="test_clean test_other dev_clean dev_other"
 
-asr_config=conf/tuning/train_asr_transformer_ref.yaml
+asr_config=conf/tuning/train_asr_transformer_ref_6layer.yaml
 lm_config=conf/tuning/train_lm_adam.yaml
 inference_config=conf/decode_asr.yaml
 
@@ -26,12 +25,8 @@ inference_config=conf/decode_asr.yaml
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
+    --asr_tag "6layer_model" \
     --skip_data_prep true \
-    --skip_train true \
-    --inference_asr_model "ref_asr.pth" \
-    --inference_lm "ref_lm.pth" \
+    --skip_train false \
     --use_lm false \
-    --layer_idx "$1" \
-    --head_idx "$2" \
-    --inference_tag "global_prune_0.5"  \
-    # --inference_tag "noLM_DH_$1_$2" \
+    --expdir "exp/6layer"

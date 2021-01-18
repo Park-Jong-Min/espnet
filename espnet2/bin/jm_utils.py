@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.utils.prune as prune
 
 def make_prune_list(np_file_path, prune_ratio, mode='lower'):
     # prune ratio is 0~1 float
@@ -108,3 +109,64 @@ def apply_prunehook(model, NP_PATH, prune_ratio, module_type, attn_type, logging
                         layer_idx=layer_idx, delete_head_list=head_list[i],
                         logging=logging,
                         module_type=module_type, attn_type=attn_type)
+
+class GetHook():
+    def __init__(self, module):
+        self.hook = module.register_forward_hook(self.hook_fn)
+        self.input = None
+        self.output = None
+
+    def hook_fn(self, module, input, output):
+        self.input = input
+        self.output = output
+        
+    def close(self):
+        self.hook.remove()
+
+def apply_output_hook(model):
+
+    for name, module in model.named_modules():
+        if 'ctc.ctc_lo' == name:
+            ctc_hook = GetHook(module)
+        
+        elif 'criterion_att.criterion':
+            att_hook = GetHook(module)
+    
+    return ctc_hook, att_hook
+
+def global_head_mask(model, prune_ratio):
+
+    n_heads = 8
+    d_model = 512
+    d_k = int(d_model / n_heads)
+    weight_dict = {}
+    mask_dict = {}
+
+    for name, param in model.named_parameters():
+        if 'linear_q.weight' in name or 'linear_k.weight' in name or 'linear_v.weight' in name:
+            mask_dict[name] = torch.ones_like(param)
+            for head in range(n_heads):
+                weight_dict[name + f'_{head}'] = param.T[:, d_k*(head):d_k*(head+1)].abs().mean()
+    
+    weight_dict = sorted(weight_dict, key=lambda k : weight_dict[k])
+
+    for i in range(int(len(weight_dict)*prune_ratio)):
+        mask = torch.ones((d_model, d_model))
+        head = int(weight_dict[i][-1])
+
+        mask.T[:, d_k*(head):d_k*(head+1)] = 0
+        mask_dict[weight_dict[i][:-9]] = mask
+
+    return mask_dict
+
+
+def global_pruning(model, prune_ratio, re_param=True):
+
+    mask_dict = global_head_mask(model, prune_ratio)
+
+    for name, module in model.named_modules():
+        if name in mask_dict:
+            prune.custom_from_mask(module, name='weight', mask=mask_dict[name])
+            if re_param == True:
+                prune.remove(module, 'weight')
+    

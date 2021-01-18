@@ -35,6 +35,7 @@ from espnet2.utils.types import str2triple_str
 from espnet2.utils.types import str_or_none
 
 from espnet2.bin.jm_utils import *
+from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
 class Speech2Text:
     """Speech2Text class
 
@@ -65,8 +66,6 @@ class Speech2Text:
         lm_weight: float = 1.0,
         penalty: float = 0.0,
         nbest: int = 1,
-        layer_idx: int=-1,
-        head_idx: int=-1,
         out_mode: str = "default", 
     ):
         assert check_argument_types()
@@ -77,6 +76,8 @@ class Speech2Text:
             asr_train_config, asr_model_file, device
         )
         asr_model.to(dtype=getattr(torch, dtype)).eval()
+
+        # global_pruning(asr_model, 0.5)
 
         # apply_hook(model=asr_model, layer_idx=layer_idx, head_idx=head_idx, 
         #         logging=logging, module_type='encoder', attn_type='self_attn')
@@ -186,10 +187,10 @@ class Speech2Text:
 
         # Input as audio signal
         if isinstance(speech, np.ndarray):
-            speech = torch.tensor(speech).requires_grad_(True)
+            speech = torch.tensor(speech)
 
         # data: (Nsamples,) -> (1, Nsamples)
-        speech = speech.unsqueeze(0).to(getattr(torch, self.dtype)).requires_grad_(True)
+        speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
         # lenghts: (1,)
         lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
         batch = {"speech": speech, "speech_lengths": lengths}
@@ -197,43 +198,52 @@ class Speech2Text:
         # a. To device
         batch = to_device(batch, device=self.device)
 
-        # b. Forward Encoder
-        enc, _ = self.asr_model.encode(**batch)
-
-        assert len(enc) == 1, len(enc)
-
-        # c. Passed the encoder result and the beam search
-        logging.debug(f"beam search input is {enc[0]} and shape {enc[0].shape}")
-        nbest_hyps = self.beam_search(
-            x=enc[0], maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
-        )
-        nbest_hyps = nbest_hyps[: self.nbest]
-
-        results = []
-        for hyp in nbest_hyps:
-            assert isinstance(hyp, Hypothesis), type(hyp)
-
-            # remove sos/eos and get results
-            token_int = hyp.yseq[1:-1].tolist()
-
-            # remove blank symbol id, which is assumed to be 0
-            token_int = list(filter(lambda x: x != 0, token_int))
-
-            # Change integer-ids to tokens
-            token = self.converter.ids2tokens(token_int)
-
-            if self.tokenizer is not None:
-                text = self.tokenizer.tokens2text(token)
-            else:
-                text = None
-            results.append((text, token, token_int, hyp))
-
-        assert check_return_type(results)
-
         if self.out_mode == 'default':
+            # b. Forward Encoder
+            enc, enc_out_lens = self.asr_model.encode(**batch)
+
+            assert len(enc) == 1, len(enc)
+
+            # c. Passed the encoder result and the beam search
+            logging.debug(f"beam search input is {enc[0]} and shape {enc[0].shape}")
+            nbest_hyps = self.beam_search(
+                x=enc[0], maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
+            )
+            nbest_hyps = nbest_hyps[: self.nbest]
+
+            results = []
+            for hyp in nbest_hyps:
+                assert isinstance(hyp, Hypothesis), type(hyp)
+
+                # remove sos/eos and get results
+                token_int = hyp.yseq[1:-1].tolist()
+
+                # remove blank symbol id, which is assumed to be 0
+                token_int = list(filter(lambda x: x != 0, token_int))
+
+                # Change integer-ids to tokens
+                token = self.converter.ids2tokens(token_int)
+
+                if self.tokenizer is not None:
+                    text = self.tokenizer.tokens2text(token)
+                else:
+                    text = None
+                results.append((text, token, token_int, hyp))
+
+            assert check_return_type(results)
+
             return results
         else:
-            return results, self.asr_model.ctc.ctc_lo(enc)
+            batch = {"speech": speech, "speech_lengths": lengths}
+
+            ctc, att = apply_output_hook(self.asr_model)
+            self.asr_model(**batch)
+
+            return ctc, att
+            # ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.asr_model.sos, self.asr_model.eos, self.asr_model.ignore_id)
+            # ys_in_lens = ys_pad_lens + 1
+            # self.asr_model.decoder(enc[0], enc_out_lens, ys_in_pad, ys_in_lens)
+            # return results, self.asr_model.ctc.ctc_lo(enc), batch
 
 
 def inference(
@@ -250,8 +260,6 @@ def inference(
     penalty: float,
     nbest: int,
     num_workers: int,
-    layer_idx: int,
-    head_idx: int,
     log_level: Union[int, str],
     data_path_and_name_and_type: Sequence[Tuple[str, str, str]],
     key_file: Optional[str],
@@ -303,8 +311,6 @@ def inference(
         lm_weight=lm_weight,
         penalty=penalty,
         nbest=nbest,
-        layer_idx=layer_idx,
-        head_idx=head_idx,
     )
 
     # 3. Build data-iterator
@@ -456,18 +462,6 @@ def get_parser():
         default=None,
         help="The model path of sentencepiece. "
         "If not given, refers from the training args",
-    )
-
-    group = parser.add_argument_group("Delete Head related")
-    group.add_argument(
-        "--layer_idx",
-        type=int,
-        default=-1,
-    )
-    group.add_argument(
-        "--head_idx",
-        type=int,
-        default=-1,
     )
 
     return parser

@@ -132,14 +132,14 @@ if __name__ == "__main__":
     ctc_argmax = ctc_out.argmax(2)
     n_targets = 0
     mode = 'word'
-    space = False
+    space = True
 
     createFolder(exp_dir + f'/feature_images/encoder_grad_cam/{mode}/audio_{audio_num}')
 
     if mode == "sentence":
         one_hot = torch.zeros_like(ctc_out)
         one_hot.scatter_(2, ctc_argmax.unsqueeze(2), 1.0)
-        img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot)
+        img = make_grad_cam_img_list(model=net, target_out=ctc_out, target_loss=one_hot, hook_list=hook_list)
         img_list.append(img)
         word_num_list.append(audio_num)
         

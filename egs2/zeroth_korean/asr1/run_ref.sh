@@ -22,14 +22,13 @@ fi
     --local_data_opts "${local_data_opts}" \
     --nbpe 5000 \
     --skip_data_prep true \
-    --use_lm true \
+    --skip_train true \
+    --use_lm false \
     --lang kr \
-    --asr_config conf/tuning/train_asr_transformer_jm.yaml \
+    --asr_config exp/ref_model/config.yaml \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
-    --bpe_train_text "data/train_data_01/text" \
-    --lm_train_text "data/train_data_01/text" "$@" \
-    --lm_config conf/train_lm.yaml \
-    --asr_tag "RefWithLm" \
-    --inference_lm "valid.loss.ave.pth" \
+    --inference_asr_model "zeroth_ref_model.pth" \
+    --lm_config exp/ref_model/config.yaml \
+    --asr_tag "ref" \
