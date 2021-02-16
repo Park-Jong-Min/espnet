@@ -3,6 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 from espnet_model_zoo.downloader import ModelDownloader
 from espnet2.bin.asr_inference import Speech2Text
+from espnet2.bin.jm_utils import *
 
 def save_encoder_image(image_list, audio_num, name, n_layers, n_heads, PATH):
     fig_saved_dir = PATH
@@ -116,6 +117,8 @@ if __name__ == "__main__":
     # Add register hook for in encoder layers.
     net = speech2text.asr_model
 
+    global_pruning(net, 0.5)
+    
     for name, parameter in net.named_modules():
         for i in range(18): 
             if 'encoder.encoders.'+ str(i) +'.self_attn' == name:

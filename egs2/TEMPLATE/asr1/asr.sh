@@ -22,6 +22,11 @@ min() {
 }
 SECONDS=0
 
+# Pruning related
+prune_ratio=0
+prune_mode=no_prune
+model_name=None
+
 # General configuration
 stage=1              # Processes starts from the specified stage.
 stop_stage=10000     # Processes is stopped at the specified stage.
@@ -175,7 +180,7 @@ Options:
     --num_splits_lm   # Number of splitting for lm corpus (default="${num_splits_lm}").
 
     # ASR model related
-    --asr_tag          # Suffix to the result dir for asr model training (default="${asr_tag}").
+    --asr_tag          # Suffix to the result dir for asr [model] training (default="${asr_tag}").
     --asr_exp          # Specify the direcotry path for ASR experiment.
                        # If this option is specified, asr_tag is ignored (default="${asr_exp}").
     --asr_stats_dir    # Specify the direcotry path for ASR statistics (default="${asr_stats_dir}").
@@ -1047,6 +1052,9 @@ if ! "${skip_train}"; then
                 --fold_length "${_fold_length}" \
                 --fold_length "${asr_text_fold_length}" \
                 --output_dir "${asr_exp}" \
+                --model_name "${model_name}" \
+                --prune_ratio "${prune_ratio}" \
+                --prune_mode "${prune_mode}" \
                 ${_opts} ${asr_args}
 
     fi
@@ -1157,6 +1165,8 @@ if ! "${skip_eval}"; then
                     --asr_train_config "${asr_exp}"/config.yaml \
                     --asr_model_file "${asr_exp}"/"${inference_asr_model}" \
                     --output_dir "${_logdir}"/output.JOB \
+                    --prune_ratio "${prune_ratio}" \
+                    --prune_mode "${prune_mode}" \
                     ${_opts} ${inference_args}
 
             # 3. Concatenates the output files from each jobs

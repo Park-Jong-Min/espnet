@@ -66,7 +66,8 @@ class Speech2Text:
         lm_weight: float = 1.0,
         penalty: float = 0.0,
         nbest: int = 1,
-        out_mode: str = "default", 
+        prune_ratio: float = 0.0,
+        prune_mode: str = 'no_prune',
     ):
         assert check_argument_types()
 
@@ -77,14 +78,12 @@ class Speech2Text:
         )
         asr_model.to(dtype=getattr(torch, dtype)).eval()
 
-        # global_pruning(asr_model, 0.5)
+        if prune_mode == 'no_prune':
+            pass
 
-        # apply_hook(model=asr_model, layer_idx=layer_idx, head_idx=head_idx, 
-        #         logging=logging, module_type='encoder', attn_type='self_attn')
-
-        # NP_PATH = '/home_data/jmpark/espnet/egs2/jm_ref/asr1/exp/feature_images/encoder_grad_cam/sentence/mean/head_score_dev_clean.npy'
-        # apply_prunehook(model=asr_model, NP_PATH=NP_PATH, prune_ratio=0.9,
-        #             module_type='encoder', attn_type='self_attn', logging=logging)
+        else:
+            exp_name = asr_train_config.split('/')[-2]
+            pruning(model=asr_model, prune_ratio=prune_ratio, prune_mode=prune_mode, exp_name=exp_name)
 
         decoder = asr_model.decoder
         ctc = CTCPrefixScorer(ctc=asr_model.ctc, eos=asr_model.eos)
@@ -169,9 +168,8 @@ class Speech2Text:
         self.device = device
         self.dtype = dtype
         self.nbest = nbest
-        self.out_mode = out_mode
 
-    # @torch.no_grad()
+    @torch.no_grad()
     def __call__(
         self, speech: Union[torch.Tensor, np.ndarray]
     ) -> List[Tuple[Optional[str], List[str], List[int], Hypothesis]]:
@@ -198,53 +196,40 @@ class Speech2Text:
         # a. To device
         batch = to_device(batch, device=self.device)
 
-        if self.out_mode == 'default':
-            # b. Forward Encoder
-            enc, enc_out_lens = self.asr_model.encode(**batch)
+        # b. Forward Encoder
+        enc, enc_out_lens = self.asr_model.encode(**batch)
 
-            assert len(enc) == 1, len(enc)
+        assert len(enc) == 1, len(enc)
 
-            # c. Passed the encoder result and the beam search
-            logging.debug(f"beam search input is {enc[0]} and shape {enc[0].shape}")
-            nbest_hyps = self.beam_search(
-                x=enc[0], maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
-            )
-            nbest_hyps = nbest_hyps[: self.nbest]
+        # c. Passed the encoder result and the beam search
+        logging.debug(f"beam search input is {enc[0]} and shape {enc[0].shape}")
+        nbest_hyps = self.beam_search(
+            x=enc[0], maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
+        )
+        nbest_hyps = nbest_hyps[: self.nbest]
 
-            results = []
-            for hyp in nbest_hyps:
-                assert isinstance(hyp, Hypothesis), type(hyp)
+        results = []
+        for hyp in nbest_hyps:
+            assert isinstance(hyp, Hypothesis), type(hyp)
 
-                # remove sos/eos and get results
-                token_int = hyp.yseq[1:-1].tolist()
+            # remove sos/eos and get results
+            token_int = hyp.yseq[1:-1].tolist()
 
-                # remove blank symbol id, which is assumed to be 0
-                token_int = list(filter(lambda x: x != 0, token_int))
+            # remove blank symbol id, which is assumed to be 0
+            token_int = list(filter(lambda x: x != 0, token_int))
 
-                # Change integer-ids to tokens
-                token = self.converter.ids2tokens(token_int)
+            # Change integer-ids to tokens
+            token = self.converter.ids2tokens(token_int)
 
-                if self.tokenizer is not None:
-                    text = self.tokenizer.tokens2text(token)
-                else:
-                    text = None
-                results.append((text, token, token_int, hyp))
+            if self.tokenizer is not None:
+                text = self.tokenizer.tokens2text(token)
+            else:
+                text = None
+            results.append((text, token, token_int, hyp))
 
-            assert check_return_type(results)
+        assert check_return_type(results)
 
-            return results
-        else:
-            batch = {"speech": speech, "speech_lengths": lengths}
-
-            ctc, att = apply_output_hook(self.asr_model)
-            self.asr_model(**batch)
-
-            return ctc, att
-            # ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.asr_model.sos, self.asr_model.eos, self.asr_model.ignore_id)
-            # ys_in_lens = ys_pad_lens + 1
-            # self.asr_model.decoder(enc[0], enc_out_lens, ys_in_pad, ys_in_lens)
-            # return results, self.asr_model.ctc.ctc_lo(enc), batch
-
+        return results
 
 def inference(
     output_dir: str,
@@ -260,6 +245,8 @@ def inference(
     penalty: float,
     nbest: int,
     num_workers: int,
+    prune_ratio: float,
+    prune_mode: Optional[str],
     log_level: Union[int, str],
     data_path_and_name_and_type: Sequence[Tuple[str, str, str]],
     key_file: Optional[str],
@@ -311,6 +298,8 @@ def inference(
         lm_weight=lm_weight,
         penalty=penalty,
         nbest=nbest,
+        prune_ratio=prune_ratio,
+        prune_mode=prune_mode,
     )
 
     # 3. Build data-iterator
@@ -462,6 +451,21 @@ def get_parser():
         default=None,
         help="The model path of sentencepiece. "
         "If not given, refers from the training args",
+    )
+
+    group = parser.add_argument_group("Pruning related")
+    group.add_argument(
+        "--prune_ratio",
+        type=float,
+        default=0,
+        help="The Pruning ratio for model."
+    )
+    group.add_argument(
+        "--prune_mode",
+        type=str,
+        default=None,
+        choices=["global_enc_self", "global_dec_self", "global_dec_src", "grad_enc_self", "grad_dec_self", "grad_dec_src", "global", "grad", "no_prune"],
+        help="The Pruning mode for model."
     )
 
     return parser

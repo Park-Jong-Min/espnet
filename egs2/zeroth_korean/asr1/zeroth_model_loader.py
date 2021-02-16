@@ -24,15 +24,17 @@ def apply_hook(net):
             hook = Hook_In_Out(module=module)
             return hook
 
-def load_model():
+def load_model(asr_config_file, asr_model_file, prune_ratio, prune_mode, device='cpu'):
+
+    exp_path = '/home/jmpark/home_data_jmpark/espnet/egs2/zeroth_korean/asr1/exp/'
     bpe_model = '/home/jmpark/home_data_jmpark/espnet/egs2/zeroth_korean/asr1/data/kr_token_list/bpe_unigram5000/bpe.model'
     d = ModelDownloader()
 
     speech2text = Speech2Text(
     # **d.download_and_unpack('Hoon Chung/zeroth_korean_asr_train_asr_transformer5_raw_bpe_valid.acc.ave'),
     # Decoding parameters are not included in the model file
-    asr_train_config='/home/jmpark/home_data_jmpark/espnet/egs2/zeroth_korean/asr1/exp/asr_train_asr_transformer5_raw_kr_bpe5000/config.yaml',
-    asr_model_file='/home/jmpark/home_data_jmpark/espnet/egs2/zeroth_korean/asr1/exp/asr_train_asr_transformer5_raw_kr_bpe5000/98epoch.pth',
+    asr_train_config=exp_path + asr_config_file,
+    asr_model_file=exp_path + asr_model_file,
     token_type='bpe',
     bpemodel=bpe_model,
     maxlenratio=0.0,
@@ -41,12 +43,15 @@ def load_model():
     ctc_weight=0.3,
     lm_weight=0.0,
     penalty=0.0,
-    nbest=1
+    nbest=1,
+    device=device,
+    prune_ratio=prune_ratio,
+    prune_mode=prune_mode,
     )
 
-    att_hook = apply_hook(speech2text.asr_model)
-
-    return speech2text, att_hook
+    return speech2text
 
 if __name__ == "__main__":
-    load_model()
+    asr_config_file = 'asr_train_asr_transformer5_raw_kr_bpe5000/config.yaml'
+    asr_model_file = 'asr_train_asr_transformer5_raw_kr_bpe5000/98epoch.pth'
+    model = load_model(asr_config_file, asr_model_file)

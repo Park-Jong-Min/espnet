@@ -16,20 +16,24 @@ if [ "${feats_type}" = fbank_pitch ]; then
     local_data_opts="---pipe_wav true"
 fi
 
+inference_config=conf/decode_asr.yaml
+
 ./asr.sh \
     --token_type bpe \
-    --ngpu 4 \
+    --ngpu 1 \
     --local_data_opts "${local_data_opts}" \
     --nbpe 5000 \
     --skip_data_prep true \
-    --use_lm true \
+    --use_lm false \
     --lang kr \
-    --asr_config conf/tuning/train_asr_transformer_jm.yaml \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
+    --inference_config "${inference_config}" \
     --bpe_train_text "data/train_data_01/text" \
-    --lm_train_text "data/train_data_01/text" "$@" \
-    --lm_config conf/train_lm.yaml \
-    --asr_tag "RefWithLm" \
-    --inference_lm "valid.loss.ave.pth" \
+    --asr_config $1 \
+    --asr_tag $2 \
+    --asr_stats_dir $3 \
+    # --asr_config conf/custom/train_tf_head4_encl12_ff512_relu6.yaml \
+    # --asr_tag "TF_CUSTOM_HEAD4_ENCL12_FF512_RELU6_lr25" \
+    # --asr_stats_dir "exp/STATS_TF_CUSTOM_HEAD4_ENCL12_FF512_RELU6_lr25" \

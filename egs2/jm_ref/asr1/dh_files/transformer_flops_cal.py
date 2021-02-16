@@ -22,7 +22,7 @@ def matrix_mul_flops(m1_shape, m2_shape, bias=True):
 
         return mat_flops
 
-def self_attn_flops_cal(input_shape, d_model, d_k_q=64, d_v=64, n_heads=8):
+def self_attn_flops_cal(input_shape, d_model, d_k_q=64, d_v=64, n_heads=8, n_ff=2048):
 
     seqlen, input_dim = input_shape[0], input_shape[1]
     # linear_q
@@ -50,8 +50,8 @@ def self_attn_flops_cal(input_shape, d_model, d_k_q=64, d_v=64, n_heads=8):
     FLOPs_norm = seqlen * d_model * 2
 
     # PositionwiseFeedForward
-    FLOPs_ffnn = matrix_mul_flops([seqlen, d_model], [d_model, 2048])
-    FLOPs_ffnn += matrix_mul_flops([seqlen, 2048], [2048, d_model])
+    FLOPs_ffnn = matrix_mul_flops([seqlen, d_model], [d_model, n_ff])
+    FLOPs_ffnn += matrix_mul_flops([seqlen, n_ff], [n_ff, d_model])
 
     # Total FLOPs
     FLOPs_head = FLOPs_linear_q + FLOPs_linear_k + FLOPs_linear_v + FLOPs_score + FLOPs_concatenate_out
@@ -64,9 +64,9 @@ if __name__ == "__main__":
     # transformer's hyper parameters
     # linear_q, linear_k, linear_v, linear_out, feed_forward_w_1, feed_forward_w_2, norm1, norm2
     # 4.815sec speech
-    input_shape = [99, 512]
+    input_shape = [99, 256]
 
-    one_layer_FLOPs, one_layer_head_FLOPs = self_attn_flops_cal(input_shape, 512, 8)
+    one_layer_FLOPs, one_layer_head_FLOPs = self_attn_flops_cal(input_shape, d_model=256, d_k_q=64, d_v=64, n_heads=4, n_ff=256)
 
     print(f"{one_layer_FLOPs/1e9} GFLOPs")
     print(f"{one_layer_head_FLOPs/1e9} GFLOPs")

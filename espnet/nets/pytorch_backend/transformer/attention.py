@@ -12,7 +12,6 @@ import numpy
 import torch
 from torch import nn
 
-
 class MultiHeadedAttention(nn.Module):
     """Multi-Head Attention layer.
 
@@ -23,7 +22,7 @@ class MultiHeadedAttention(nn.Module):
 
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate):
+    def __init__(self, n_head, n_feat, dropout_rate, prune_act='None'):
         """Construct an MultiHeadedAttention object."""
         super(MultiHeadedAttention, self).__init__()
         assert n_feat % n_head == 0
@@ -36,7 +35,44 @@ class MultiHeadedAttention(nn.Module):
         self.linear_out = nn.Linear(n_feat, n_feat)
         self.attn = None
         self.dropout = nn.Dropout(p=dropout_rate)
-        # self.delete_head_list = None
+
+        # jm custom
+        self.prune_act = prune_act
+
+        if self.prune_act != 'None':
+            self.linear_q_pred = nn.Linear(n_feat, n_head)
+            self.linear_k_pred = nn.Linear(n_feat, n_head)
+            self.linear_v_pred = nn.Linear(n_feat, n_head)
+
+            if self.prune_act == 'relu':
+                self.prune_act_fn = nn.ReLU()
+            
+            elif self.prune_act == 'relu6':
+                self.prune_act_fn = nn.ReLU6()
+            
+            elif self.prune_act == 'relu_htanh' or self.prune_act == 'htanh_relu' or self.prune_act == 'htanh':
+                self.prune_act_fn = nn.Sequential(
+                                                nn.ReLU(),
+                                                nn.Hardtanh()
+                                                )
+    
+    def forward_pred_activation(self, query, key, value):
+        query_act = self.prune_act_fn(query)
+        key_act = self.prune_act_fn(key)
+        value_act = self.prune_act_fn(value)
+
+        return query_act, key_act, value_act
+
+    def forward_pred(self, query, key, value):
+        n_batch = query.size(0)
+        q = self.linear_q_pred(query).view(n_batch, -1, self.h, 1)
+        k = self.linear_k_pred(key).view(n_batch, -1, self.h, 1)
+        v = self.linear_v_pred(value).view(n_batch, -1, self.h, 1)
+        q = q.transpose(1, 2)  # (batch, head, time1, 1)
+        k = k.transpose(1, 2)  # (batch, head, time2, 1)
+        v = v.transpose(1, 2)  # (batch, head, time2, 1)
+
+        return q, k, v
 
     def forward_qkv(self, query, key, value):
         """Transform query, key and value.
@@ -59,21 +95,6 @@ class MultiHeadedAttention(nn.Module):
         q = q.transpose(1, 2)  # (batch, head, time1, d_k)
         k = k.transpose(1, 2)  # (batch, head, time2, d_k)
         v = v.transpose(1, 2)  # (batch, head, time2, d_k)
-
-        # if self.delete_head_list is not None:
-        #     q.index_fill_(1, self.delete_head_list, 0)
-        #     k.index_fill_(1, self.delete_head_list, 0)
-        #     v.index_fill_(1, self.delete_head_list, 0)
-
-        #     # q_dh = torch.zeros_like(q)
-        #     # k_dh = torch.zeros_like(k)
-        #     # v_dh = torch.zeros_like(v)
-
-        #     # q_dh[:, self.survive_head_idx, :] = q[:, self.survive_head_idx, :]
-        #     # k_dh[:, self.survive_head_idx, :] = k[:, self.survive_head_idx, :]
-        #     # v_dh[:, self.survive_head_idx, :] = v[:, self.survive_head_idx, :]
-
-        #     # return q_dh, k_dh, v_dh
 
         return q, k, v
 
@@ -109,9 +130,6 @@ class MultiHeadedAttention(nn.Module):
             x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)
         )  # (batch, time1, d_model)
 
-        # Add when you want to make head score image
-        # x.retain_grad()
-
         return self.linear_out(x), self.attn # (batch, time1, d_model)
 
     def forward(self, query, key, value, mask):
@@ -128,8 +146,18 @@ class MultiHeadedAttention(nn.Module):
             torch.Tensor: Output tensor (#batch, time1, d_model).
 
         """
-        # self.delete_head_list = delete_head_list
-        q, k, v = self.forward_qkv(query, key, value)
+        if self.prune_act == 'None':
+            q, k, v = self.forward_qkv(query, key, value) # (batch, head, time1, d_k), (batch, head, time2, d_k), (batch, head, time2, d_k)
+        
+        else:
+            q_pred, k_pred, v_pred = self.forward_pred(query, key, value) # (batch, head, time1, 1), (batch, head, time2, 1)
+            q_act, k_act, v_act = self.forward_pred_activation(q_pred, k_pred, v_pred)
+            
+            q, k, v = self.forward_qkv(query, key, value) # (batch, head, time1, d_k), (batch, head, time2, d_k), (batch, head, time2, d_k)
+            q = torch.mul(q_act, q)
+            k = torch.mul(k_act, k)
+            v = torch.mul(v_act, v)
+        
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
         return self.forward_attention(v, scores, mask)
 

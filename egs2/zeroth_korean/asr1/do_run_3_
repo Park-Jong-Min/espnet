@@ -1,0 +1,8 @@
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_global_60.sh
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_global_70.sh
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_global_80.sh
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_global_90.sh
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_grad_60.sh
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_grad_70.sh
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_grad_80.sh
+CUDA_VISIBLE_DEVICES=6,7 ./retrain_sh/run_retrain_3_grad_90.sh

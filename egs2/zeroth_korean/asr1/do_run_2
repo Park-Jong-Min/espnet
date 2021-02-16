@@ -1,0 +1,8 @@
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Grad_Prune60 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Grad_Prune60_Retrain
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Grad_Prune70 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Grad_Prune70_Retrain
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Grad_Prune80 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Grad_Prune80_Retrain
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Grad_Prune90 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Grad_Prune90_Retrain
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Global_Prune60 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Global_Prune60_Retrain
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Global_Prune70 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Global_Prune70_Retrain
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Global_Prune80 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Global_Prune80_Retrain
+./run_test.sh --asr_exp exp/asr_TF_ENCL6_FF512_NoLM_Global_Prune90 --prune_ratio 0.0 --prune_mode no_prune --inference_tag ENCL6_FF512_Global_Prune90_Retrain

@@ -11,22 +11,23 @@ valid_set="dev"
 test_sets="dev_clean"
 
 asr_config=conf/tuning/train_asr_transformer_ref.yaml
-lm_config=conf/tuning/train_lm_adam.yaml
+# lm_config=conf/tuning/train_lm_adam.yaml
 inference_config=conf/decode_asr.yaml
 
 ./asr.sh \
     --lang en \
-    --ngpu 4 \
+    --ngpu 1 \
     --nbpe 5000 \
     --max_wav_duration 30 \
     --speed_perturb_factors "0.9 1.0 1.1" \
     --asr_config "${asr_config}" \
-    --lm_config "${lm_config}" \
     --inference_config "${inference_config}" \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
-    --skip_data_prep true \
-    --skip_train true \
+    --skip_data_prep false \
+    --skip_train false \
+    --use_lm false \
     --inference_asr_model "ref_asr.pth" \
-    --inference_lm "ref_lm.pth"
+    --inference_lm "ref_lm.pth" \
+    # --lm_config "${lm_config}" \

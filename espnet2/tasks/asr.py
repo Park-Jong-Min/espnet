@@ -54,6 +54,8 @@ from espnet2.utils.types import int_or_none
 from espnet2.utils.types import str2bool
 from espnet2.utils.types import str_or_none
 
+from espnet2.bin.jm_utils import *
+
 frontend_choices = ClassChoices(
     name="frontend",
     classes=dict(default=DefaultFrontend, sliding_window=SlidingWindow),

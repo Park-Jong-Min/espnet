@@ -74,6 +74,8 @@ from espnet2.utils.types import str_or_int
 from espnet2.utils.types import str_or_none
 from espnet2.utils.yaml_no_alias_safe_dump import yaml_no_alias_safe_dump
 
+from espnet2.bin.jm_utils import *
+
 if LooseVersion(torch.__version__) >= LooseVersion("1.5.0"):
     from torch.multiprocessing.spawn import ProcessContext
 else:
@@ -798,6 +800,22 @@ class AbsTask(ABC):
                 default=dict(),
                 help="The keyword arguments for lr scheduler",
             )
+        
+        group = parser.add_argument_group(description="Pruning related")
+        group.add_argument(
+            "--prune_ratio",
+            type=float,
+            default=0,
+            help="The Pruning ratio for model."
+        )
+        group.add_argument(
+            "--prune_mode",
+            type=str,
+            default=None,
+            choices=["global_enc_self", "global_dec_self", "global_dec_src", "grad_enc_self", "grad_dec_self", "grad_dec_src", "global", "grad", "no_prune"],
+            help="The Pruning mode for model."
+        )
+        group.add_argument("--model_name", type=str, default=None)
 
         cls.trainer.add_arguments(parser)
         cls.add_task_arguments(parser)
@@ -936,6 +954,35 @@ class AbsTask(ABC):
                         f'for {cls.__name__}: "{k}" is not allowed.\n{mes}'
                     )
 
+    # @staticmethod
+    # def resume(
+    #     checkpoint: Union[str, Path],
+    #     model: torch.nn.Module,
+    #     reporter: Reporter,
+    #     optimizers: Sequence[torch.optim.Optimizer],
+    #     schedulers: Sequence[Optional[AbsScheduler]],
+    #     scaler: Optional[GradScaler],
+    #     ngpu: int = 0,
+    # ):
+    #     states = torch.load(
+    #         checkpoint,
+    #         map_location=f"cuda:{torch.cuda.current_device()}" if ngpu > 0 else "cpu",
+    #     )
+    #     model.load_state_dict(states["model"])
+    #     reporter.load_state_dict(states["reporter"])
+    #     for optimizer, state in zip(optimizers, states["optimizers"]):
+    #         optimizer.load_state_dict(state)
+    #     for scheduler, state in zip(schedulers, states["schedulers"]):
+    #         if scheduler is not None:
+    #             scheduler.load_state_dict(state)
+    #     if scaler is not None:
+    #         if states["scaler"] is None:
+    #             logging.warning("scaler state is not found")
+    #         else:
+    #             scaler.load_state_dict(states["scaler"])
+
+    #     logging.info(f"The training was resumed using {checkpoint}")
+    
     @staticmethod
     def resume(
         checkpoint: Union[str, Path],
@@ -950,18 +997,13 @@ class AbsTask(ABC):
             checkpoint,
             map_location=f"cuda:{torch.cuda.current_device()}" if ngpu > 0 else "cpu",
         )
-        model.load_state_dict(states["model"])
-        reporter.load_state_dict(states["reporter"])
-        for optimizer, state in zip(optimizers, states["optimizers"]):
-            optimizer.load_state_dict(state)
-        for scheduler, state in zip(schedulers, states["schedulers"]):
-            if scheduler is not None:
-                scheduler.load_state_dict(state)
-        if scaler is not None:
-            if states["scaler"] is None:
-                logging.warning("scaler state is not found")
+        model.load_state_dict(states["model"], strict=False)
+
+        for name, param in model.named_parameters():
+            if 'pred' in name:
+                pass
             else:
-                scaler.load_state_dict(states["scaler"])
+                param.requires_grad = False
 
         logging.info(f"The training was resumed using {checkpoint}")
 
@@ -1091,6 +1133,7 @@ class AbsTask(ABC):
 
         # 2. Build model
         model = cls.build_model(args=args)
+
         if not isinstance(model, AbsESPnetModel):
             raise RuntimeError(
                 f"model must inherit {AbsESPnetModel.__name__}, but got {type(model)}"
@@ -1168,6 +1211,7 @@ class AbsTask(ABC):
             scaler = GradScaler()
         else:
             scaler = None
+
         if args.resume and (output_dir / "checkpoint.pth").exists():
             cls.resume(
                 checkpoint=output_dir / "checkpoint.pth",
@@ -1178,6 +1222,21 @@ class AbsTask(ABC):
                 scaler=scaler,
                 ngpu=args.ngpu,
             )
+
+            prune_mode = args.prune_mode
+            prune_ratio = args.prune_ratio
+            exp_name = args.model_name
+
+            if prune_mode == 'no_prune':
+                pass
+
+            else:
+                pruning(model=model, 
+                        prune_ratio=prune_ratio, 
+                        prune_mode=prune_mode, 
+                        exp_name=exp_name, 
+                        re_param=False, 
+                        device=f"cuda:{torch.cuda.current_device()}")
 
         if args.dry_run:
             pass

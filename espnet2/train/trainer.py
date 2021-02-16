@@ -36,6 +36,8 @@ from espnet2.train.reporter import Reporter
 from espnet2.train.reporter import SubReporter
 from espnet2.utils.build_dataclass import build_dataclass
 
+from espnet2.bin.jm_utils import *
+
 if LooseVersion(torch.__version__) >= LooseVersion("1.1.0"):
     from torch.utils.tensorboard import SummaryWriter
 else:
@@ -254,6 +256,8 @@ class Trainer:
                 if trainer_options.use_wandb:
                     reporter.wandb_log()
 
+                mask_dict = prune_remove(model)
+
                 # 4. Save/Update the checkpoint
                 torch.save(
                     {
@@ -271,6 +275,8 @@ class Trainer:
 
                 # 5. Save the model and update the link to the best model
                 torch.save(model.state_dict(), output_dir / f"{iepoch}epoch.pth")
+
+                prune_remask(model, mask_dict)
 
                 # Creates a sym link latest.pth -> {iepoch}epoch.pth
                 p = output_dir / "latest.pth"

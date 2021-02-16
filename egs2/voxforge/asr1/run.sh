@@ -10,7 +10,7 @@ train_set="tr_${lang}"
 valid_set="dt_${lang}"
 test_sets="dt_${lang} et_${lang}"
 
-asr_config=conf/train_asr_rnn.yaml
+asr_config=conf/tuning/train_asr_transformer_2.yaml
 inference_config=conf/decode_asr.yaml
 
 # FIXME(kamo):
@@ -29,4 +29,4 @@ inference_config=conf/decode_asr.yaml
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
-    --lm_train_text "data/${train_set}/text" "$@"
+    # --lm_train_text "data/${train_set}/text" "$@"

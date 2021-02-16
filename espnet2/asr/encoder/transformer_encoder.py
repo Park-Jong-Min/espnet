@@ -69,6 +69,7 @@ class TransformerEncoder(AbsEncoder):
         positionwise_layer_type: str = "linear",
         positionwise_conv_kernel_size: int = 1,
         padding_idx: int = -1,
+        prune_act: str = 'None',
     ):
         assert check_argument_types()
         super().__init__()
@@ -130,7 +131,7 @@ class TransformerEncoder(AbsEncoder):
             lambda lnum: EncoderLayer(
                 output_size,
                 MultiHeadedAttention(
-                    attention_heads, output_size, attention_dropout_rate
+                    attention_heads, output_size, attention_dropout_rate, prune_act
                 ),
                 positionwise_layer(*positionwise_layer_args),
                 dropout_rate,
